@@ -1,0 +1,142 @@
+Capstone- shell-scripting
+
+#!/bin/bash
+
+# Environment variables
+ENVIRONMENT=$1
+
+check_num_of_args() {
+# Checking the number of arguments
+if [ "$#" -ne 0 ]; then
+    echo "Usage: $0 <environment>"
+    exit 1
+fi
+}
+
+activate_infra_environment() {
+# Acting based on the argument value
+if [ "$ENVIRONMENT" == "local" ]; then
+  echo "Running script for Local Environment..."
+elif [ "$ENVIRONMENT" == "testing" ]; then
+  echo "Running script for Testing Environment..."
+elif [ "$ENVIRONMENT" == "production" ]; then
+  echo "Running script for Production Environment..."
+else
+  echo "Invalid environment specified. Please use 'local', 'testing', or 'production'."
+  exit 2
+fi
+}
+
+# Function to check if AWS CLI is installed
+check_aws_cli() {
+    if ! command -v aws &> /dev/null; then
+        echo "AWS CLI is not installed. Please install it before proceeding."
+        return 1
+    fi
+}
+
+# Function to check if AWS profile is set
+check_aws_profile() {
+    if [ -z "$AWS_PROFILE" ]; then
+        echo "AWS profile environment variable is not set."
+        return 1
+    fi
+}
+
+# Function to create EC2 Instances
+create_ec2_instances() {
+
+    # Specify the parameters for the EC2 instances
+    instance_type="t2.micro"
+    ami_id="ami-0cd59ecaf368e5ccf"
+    count=2  # Number of instances to create
+    region="us-east-1" # Region to create cloud resources
+
+    # Create the EC2 instances
+    
+    # Create the EC2 instances
+    aws ec2 run-instances \
+        --image-id "$ami_id" \
+        --instance-type "$instance_type" \
+        --count $count
+        --key-name test-key
+
+    # Check if the EC2 instances were created successfully
+    if [ $? -eq 0 ]; then
+        echo "EC2 instances created successfully."
+    else
+        echo "Failed to create EC2 instances."
+    fi
+}
+
+# Function to create S3 buckets for different departments
+create_s3_buckets() {
+    company="datawise"
+    departments=("Marketing" "Sales" "HR" "Operations" "Media")
+
+    for department in "${departments[@]}"; do
+        bucket_name="${company}-${department}-Data-Bucket"
+
+        # Check if the bucket already exists
+        if aws s3api head-bucket --bucket "$bety_bucket" &>/dev/null; then
+            echo "S3 bucket '$bety_bucket' already exists."
+        else
+            # Create S3 bucket using AWS CLI
+            
+            # Create S3 bucket using AWS CLI
+            aws s3api create-bucket --bucket "$bety_bucket" --region your-region
+            if [ $? -eq 0 ]; then
+                echo "S3 bucket '$bety_bucket' created successfully."
+            else
+                echo "Failed to create S3 bucket '$bety_bucket'."
+            fi
+        fi
+    done
+}
+
+
+# Function to create IAM users from an array of names
+create_iam_users() {
+  # Define an array with the names of IAM users
+  local USER_NAMES=("Tope" "Tolani" "Craig" "Benson" "Okoro")
+
+  # Iterate over each user name and create the IAM user
+  for USER_NAME in "${USER_NAMES[@]}"
+  do
+    echo "Creating IAM user: $USER_NAME"
+    aws iam create-user --user-name "$USER_NAME" || { echo "Failed to create user $USER_NAME"; exit 1; }
+    echo "IAM user $USER_NAME created successfully."
+  done
+}
+
+
+# Function to create IAM group, attach policy, and add users
+create_iam_group_and_assign_users() {
+  local GROUP_NAME="Admin_Group"
+  local USERS=("Tope" "Tolani" "Craig")
+
+  echo "Creating IAM group: $GROUP_NAME"
+  aws iam create-group --group-name "$GROUP_NAME" || { echo "Failed to create group $GROUP_NAME"; exit 1; }
+
+  echo "Attaching AdministratorAccess policy to group: $GROUP_NAME"
+  aws iam attach-group-policy --group-name "$GROUP_NAME" --policy-arn "arn:aws:iam::aws:policy/AdministratorAccess" || { echo "Failed to attach policy to group $GROUP_NAME"; exit 1; }
+
+  for USER_NAME in "${USERS[@]}"
+  do
+    echo "Adding user $USER_NAME to group $GROUP_NAME"
+    aws iam add-user-to-group --user-name "$USER_NAME" --group-name "$GROUP_NAME" || { echo "Failed to add user $USER_NAME to group $GROUP_NAME"; exit 1; }
+  done
+
+  echo "IAM group $GROUP_NAME created, policy attached, and users added successfully."
+}
+
+
+check_num_of_args
+activate_infra_environment
+check_aws_cli
+check_aws_profile
+create_ec2_instances
+create_s3_buckets
+create_iam_users
+create_iam_group_and_assign_users
+                                                                                                  
